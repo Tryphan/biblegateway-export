@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 #------------------------------------------------------------------------------
 # BibleGateway Export: passage lookup for Org and Markdown
-# - Jonathan Clark; local Org extension v1.6.0, 24.10.2026
+# - Jonathan Clark; local Org extension v1.7.0, 24.10.2026
 #------------------------------------------------------------------------------
 # Uses BibleGateway.com's passage lookup tool to find a passage and turn it into Markdown usable in other ways.
 # It passes 'reference' through to the BibleGateway parser to work out what range of verses should be included.
@@ -36,7 +36,7 @@
 # - You can run this in -test mode, which uses a local file as the HTML input,
 #   to avoid over-using the BibleGateway service.
 #------------------------------------------------------------------------------
-VERSION = '1.6.0'.freeze
+VERSION = '1.7.0'.freeze
 
 # require 'uri' # for dealing with URIs
 require 'net/http' # for handling URIs and requests. More details at https://ruby-doc.org/stdlib-2.7.1/libdoc/net/http/rdoc/Net/HTTP.html

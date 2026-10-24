@@ -2,6 +2,12 @@
 
 ## CHANGELOG
 
+### v1.7.0, 24.10.2026
+- Add asynchronous Emacs command `biblegateway-export-insert` for Org buffers.
+- Adapt heading levels to the destination subtree and namespace footnotes.
+- Preserve results when a destination closes or becomes read-only.
+- Add example configuration, installation instructions, and Emacs tests.
+
 ### v1.6.0, 24.10.2026
 - Establish BibleGateway Export as a separate repository with the `bg-export` command.
 - Add native Org output via `--format org` while retaining Markdown by default.

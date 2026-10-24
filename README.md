@@ -19,7 +19,7 @@ If you downloaded the Git bundle, create your working repository with:
 
 ```bash
 mkdir -p ~/devel
-git clone ~/Downloads/biblegateway-export.bundle ~/devel/biblegateway-export
+git clone ~/Downloads/biblegateway-export-v1.7.0.bundle ~/devel/biblegateway-export
 cd ~/devel/biblegateway-export
 ```
 
@@ -99,6 +99,63 @@ Org output uses star headings, `*bold*`, `/italics/`, and `[fn:a]` footnotes.
 Cross-references use uppercase footnote labels. The formatter handles the syntax
 produced by this parser; it does not convert arbitrary Markdown.
 
+## Emacs integration
+
+Requires Emacs 27.1 or newer and its bundled Org mode. No additional Emacs
+packages are needed. Add the following to your init file, or to an Emacs Lisp
+source block in your literate `bsw-emacs.org` configuration:
+
+```elisp
+(add-to-list 'load-path
+             (expand-file-name "~/devel/biblegateway-export/emacs"))
+(require 'biblegateway-export)
+
+(setq biblegateway-export-script
+      (expand-file-name "~/devel/biblegateway-export/bg-export")
+      biblegateway-export-ruby-program "/usr/bin/ruby"
+      biblegateway-export-translation "NET")
+
+;; Optional: choose another key if C-c b is already in use.
+(define-key org-mode-map (kbd "C-c b") #'biblegateway-export-insert)
+```
+
+The same configuration is in `emacs/config-example.el`. Evaluate the block or
+restart Emacs. In an Org buffer, put point where the passage should go and run
+`M-x biblegateway-export-insert` (or `C-c b`). Enter a passage such as
+`John 3:16-18`, then accept `NET` or enter another translation abbreviation.
+
+Fetching runs asynchronously: keep editing while it works. The insertion position
+follows your edits. By default the passage becomes a child of the heading that
+contained point when you started the lookup; before the first heading it is a
+level-one heading. To always insert top-level passages, set:
+
+```elisp
+(setq biblegateway-export-heading-level 1)
+```
+
+Each lookup gets unique Org footnote labels so passages inserted in the same note
+do not share conflicting definitions. Insertion is a single undo group. Failed
+lookups leave your note alone and show an error buffer. If you close the note or
+make it read-only during the fetch, the result is preserved in a separate buffer.
+The command inserts at point; it does not replace selected text. It disables
+clipboard copying and invokes Ruby with an argument list, without a shell.
+
+### Should this go in ~/scripts?
+
+Keep the complete Git repository in `~/devel/biblegateway-export`. Its `lib/`
+directory is required, so copying only `bg-export` into `~/scripts` will not work.
+For terminal use, link the command into a directory already on your PATH:
+
+```bash
+mkdir -p ~/scripts
+ln -s ~/devel/biblegateway-export/bg-export ~/scripts/bg-export
+```
+
+Use either this link or the earlier `~/.local/bin` link; both point to the same
+checkout. If you prefer to keep the whole project under `~/scripts`, use
+`~/scripts/biblegateway-export` and update both Emacs paths accordingly.
+Emacs uses the absolute paths above and needs neither symlink nor PATH changes.
+
 ## Clipboard
 
 File saving requires only Ruby's standard library. Optional clipboard copying
@@ -124,6 +181,12 @@ gem install --user-install minitest
 ruby test/test_cli.rb
 ```
 
+Run the offline Emacs tests with:
+
+```bash
+emacs -Q --batch -L emacs -l test/test_emacs.el -f ert-run-tests-batch-and-exit
+```
+
 The offline suite uses synthetic HTML and checks both output formats, notes,
 headings, exclusion options, file output, diagnostics, errors, and current title
 and footer markup. A NET passage was also fetched for manual verification during
@@ -136,6 +199,9 @@ development. Other translations and future BibleGateway markup can differ.
 | `bg-export` | Executable Ruby command and HTML parser |
 | `lib/output_format.rb` | Native Org formatting |
 | `test/test_cli.rb` | Offline CLI regression tests |
+| `emacs/biblegateway-export.el` | Asynchronous Org insertion command |
+| `emacs/config-example.el` | Example Emacs configuration |
+| `test/test_emacs.el` | Offline Emacs integration tests |
 | `test/fixtures/passage.fixture` | Synthetic HTML input for tests |
 | `README.md` | Installation and usage |
 | `CHANGELOG.md` | Change history, including upstream history |
