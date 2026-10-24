@@ -52,6 +52,37 @@ class ParserAndRendererTests(unittest.TestCase):
             self.assertNotIn(text, out)
         self.assertIn("Sample words", out)
 
+    def test_plain_text_has_readable_notes_without_generated_markup(self):
+        out = render(format="txt", boldwords=True)
+        for text in ('Sample 1:1-12 (TEST)', 'Sample heading',
+                     '1:1 Sample words supplied words & text <literal>.[a][A]',
+                     'Next line.', '[a] Sample 1:1 A sample note.',
+                     '[A] Sample 2:1', 'Sample copyright & notice.'):
+            self.assertIn(text, out)
+        for marker in ('# ', '*Sample words*', '_supplied words_',
+                       '[fn:', '[^', ' \\\\\n'):
+            self.assertNotIn(marker, out)
+        self.assertEqual(out, render(format="txt", boldwords=False))
+
+    def test_plain_text_verse_lines_and_exclusions(self):
+        out = render(format="txt", newline=True)
+        self.assertIn('Chapter 1\n1 Sample words', out)
+        self.assertIn('\n10-12 ', out)
+        self.assertNotRegex(out, r'(?m)^[#*]+ ')
+        excluded = render(format="txt", headers=False, footnotes=False,
+                          crossrefs=False, numbering=False, copyright=False)
+        for text in ('Sample heading', 'Footnotes', 'Crossrefs', 'copyright',
+                     '[a]', '[A]', '\n1:1 ', '10-12'):
+            self.assertNotIn(text, excluded)
+        self.assertIn('Sample words supplied words', excluded)
+
+    def test_plain_text_preserves_literal_characters_and_unicode(self):
+        html = HTML.replace('Sample words', 'Literal *stars* _words_ “αβ”—γ')
+        self.assertIn('Literal *stars* _words_ “αβ”—γ', render(html, format="txt"))
+
+    def test_md_alias_matches_markdown(self):
+        self.assertEqual(render(format="md"), render(format="markdown"))
+
     def test_modern_containers_scope_and_metadata(self):
         html = """<p>Navigation junk</p><section class='passage-box'>
         <h1 class='passage-display'><span class='bcv'><span>Current 2:1</span></span>
@@ -75,7 +106,7 @@ class ParserAndRendererTests(unittest.TestCase):
         passage = parse_passage(html)
         self.assertEqual(passage.reference, 'Sample 2:1-3')
         self.assertEqual(len(passage.blocks), 3)
-        for fmt in ['markdown', 'org']:
+        for fmt in ['markdown', 'org', 'txt']:
             out = Renderer(Options(format=fmt, boldwords=True)).render(passage)
             self.assertIn('Sample copyright & notice.', out)
             self.assertIn('Sample 4:1; Sample 5:1', out)
@@ -157,6 +188,21 @@ class CliTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(result.stderr, '')
         self.assertTrue(result.stdout.startswith('* Sample'))
+
+    def test_cli_plain_text_file_and_md_alias(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / 'sample.txt'
+            result = self.cli('-t', str(FIXTURE), '--format', 'txt', '-b', '-l',
+                              '--output', str(path), 'Sample')
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(result.stdout, '')
+            self.assertEqual(result.stderr, '')
+            self.assertEqual(path.read_text(encoding='utf-8'),
+                             render(format='txt', boldwords=True, newline=True))
+        md = self.cli('-t', str(FIXTURE), '--format', 'md', 'Sample')
+        markdown = self.cli('-t', str(FIXTURE), '--format', 'markdown', 'Sample')
+        self.assertEqual(md.returncode, 0, md.stderr)
+        self.assertEqual(md.stdout, markdown.stdout)
 
     def test_output_file_and_diagnostics(self):
         with tempfile.TemporaryDirectory() as tmp:

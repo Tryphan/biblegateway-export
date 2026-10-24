@@ -1,4 +1,4 @@
-"""Render the same passage model directly into Markdown or Org."""
+"""Render the same passage model directly into Markdown, Org, or plain text."""
 from dataclasses import dataclass
 import re
 
@@ -21,11 +21,16 @@ class Renderer:
     def __init__(self, options: Options):
         self.options = options
         self.org = options.format == "org"
+        self.txt = options.format == "txt"
 
     def heading(self, level: int, text: str) -> str:
+        if self.txt:
+            return text
         return ("*" if self.org else "#") * level + " " + text
 
     def note_ref(self, label: str) -> str:
+        if self.txt:
+            return f"[{label}]"
         return f"[fn:{label}]" if self.org else f"[^{label}]"
 
     def inline(self, children: tuple[Inline, ...], active: str = "") -> str:
@@ -35,7 +40,7 @@ class Renderer:
             if kind == "text":
                 output.append(node.value)
             elif kind == "break":
-                output.append(" \\\\\n" if self.org else "  \n")
+                output.append("\n" if self.txt else " \\\\\n" if self.org else "  \n")
             elif kind in {"footnote", "crossref"}:
                 if getattr(self.options, "footnotes" if kind == "footnote" else "crossrefs"):
                     output.append(self.note_ref(node.value))
@@ -54,7 +59,7 @@ class Renderer:
                 bold = kind == "bold" or (kind == "words" and self.options.boldwords)
                 emphasis = "bold" if bold else "italic" if kind == "italic" else ""
                 value = self.inline(node.children, emphasis or active)
-                if emphasis and emphasis != active and value.strip():
+                if not self.txt and emphasis and emphasis != active and value.strip():
                     mark = ("*" if self.org else "**") if bold else ("/" if self.org else "_")
                     value = self.emphasize(value, mark)
                 output.append(value)
@@ -93,7 +98,7 @@ class Renderer:
             ("Crossrefs", passage.crossrefs, self.options.crossrefs),
         ):
             if enabled and notes:
-                definitions = [self.note_ref(note.label) + (" " if self.org else ": ")
+                definitions = [self.note_ref(note.label) + (" " if self.org or self.txt else ": ")
                                + self.inline(note.children).strip() for note in notes]
                 sections.append(self.heading(3, title) + "\n" + "\n".join(definitions))
         if self.options.copyright:

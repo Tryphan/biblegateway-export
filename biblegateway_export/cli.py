@@ -15,16 +15,16 @@ from . import __version__
 
 def make_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="bg-export", description=(
-        "Export one BibleGateway passage to Markdown or Org. "
+        "Export one BibleGateway passage to Markdown, Org, or plain text. "
         "Short exclusion options retain their original meanings."))
-    parser.add_argument("--format", choices=("markdown", "org"), default="markdown")
+    parser.add_argument("--format", choices=("markdown", "md", "org", "txt"), default="markdown")
     parser.add_argument("-o", "--output", type=Path, help="save UTF-8 output to FILE")
     clipboard = parser.add_mutually_exclusive_group()
     clipboard.add_argument("--clipboard", dest="clipboard", action="store_true")
     clipboard.add_argument("--no-clipboard", dest="clipboard", action="store_false")
     parser.set_defaults(clipboard=True)
     parser.add_argument("--script-version", action="version", version=__version__)
-    parser.add_argument("-b", "--boldwords", action="store_true", help="bold the words of Jesus")
+    parser.add_argument("-b", "--boldwords", action="store_true", help="bold the words of Jesus (Org/Markdown only)")
     for short, long, help_text in (
         ("c", "copyright", "copyright notice"), ("e", "headers", "editorial headings"),
         ("f", "footnotes", "footnotes"), ("n", "numbering", "verse and chapter numbers"),
@@ -33,7 +33,7 @@ def make_parser() -> argparse.ArgumentParser:
         parser.add_argument(f"-{short}", f"--{long}", action="store_false",
                             help=f"exclude {help_text}")
     parser.add_argument("-i", "--info", action="store_true", help="diagnostics on stderr")
-    parser.add_argument("-l", "--newline", action="store_true", help="level 5/6 chapter/verse headings")
+    parser.add_argument("-l", "--newline", action="store_true", help="chapter/verse lines (level 5/6 headings in Org/Markdown)")
     parser.add_argument("-t", "--test", type=Path, help="read local HTML instead of fetching")
     parser.add_argument("-v", "--version", default="NET", metavar="TRANSLATION",
                         help="BibleGateway translation abbreviation (default: NET)")

@@ -1,67 +1,73 @@
-# BibleGateway Export
+#+title: BibleGateway Export — Changelog
+#+startup: overview
 
-## CHANGELOG
+* v2.1.0, 24.10.2026
+- Convert README, changelog, and historical documentation to Org mode.
+- Add =--format txt= with plain headings, simple note labels, and no emphasis markup.
+- Support =--format md= as an alias for =--format markdown=.
+- Preserve TXT exclusions, chapter/verse lines, Unicode, and file/clipboard output.
+- Update package metadata for README.org and add plain-text regression tests.
 
-### v2.0.0, 24.10.2026
+* v2.0.0, 24.10.2026
 - Replace the Ruby implementation with Python 3.10+; no Ruby runtime is needed.
 - Parse HTML using Beautiful Soup and render Org/Markdown from a shared model.
 - Preserve CLI flags and launcher name; retain native Unicode punctuation.
-- Update Emacs to call Python using `biblegateway-export-python-program`.
+- Update Emacs to call Python using =biblegateway-export-python-program=.
 - Use OS clipboard tools, including wl-copy on Wayland, without a clipboard gem.
 - Add installable package metadata and offline Python and end-to-end Emacs tests.
 - Retain original Ruby versions in Git history and upstream attribution in docs.
 
-### v1.7.0, 24.10.2026
-- Add asynchronous Emacs command `biblegateway-export-insert` for Org buffers.
+* v1.7.0, 24.10.2026
+- Add asynchronous Emacs command =biblegateway-export-insert= for Org buffers.
 - Adapt heading levels to the destination subtree and namespace footnotes.
 - Preserve results when a destination closes or becomes read-only.
 - Add example configuration, installation instructions, and Emacs tests.
 
-### v1.6.0, 24.10.2026
-- Establish BibleGateway Export as a separate repository with the `bg-export` command.
-- Add native Org output via `--format org` while retaining Markdown by default.
+* v1.6.0, 24.10.2026
+- Establish BibleGateway Export as a separate repository with the =bg-export= command.
+- Add native Org output via =--format org= while retaining Markdown by default.
 - Add UTF-8 file output, optional clipboard support, and script version flag.
 - Send diagnostics to stderr and return failure status on errors.
 - Fix multiword references, multi-digit verse ranges, and excluded heading text.
 - Decode HTML entities and add offline CLI regression tests.
 - Handle current span-based passage titles and exclude site footers.
 
-### v1.5.0, 29.1.2024
+* v1.5.0, 29.1.2024
 - [Fix] Cope with BibleGateway's change to their output pages, which meant missing heading and unwanted extra text on the end of bg2md's output
 - [Fix] With some options, verses could be omitted when the range included two successive chapters
 
-### v1.4.7, 12.8.2023
+* v1.4.7, 12.8.2023
 - [Fix] Extend request fetch timeouts for slower connections and connectivity issues
 
-### v1.4.6, 22.1.2023
+* v1.4.6, 22.1.2023
 - [Fix] Cope with some odd data in verse numbers in LEB and WEB (thanks to report by @CGIII)
 - [Fix] Cope with a change to BG data for single verse lookups
 
-### v1.4.5, 17.1.2023
+* v1.4.5, 17.1.2023
 - [Fix] Deal properly with italicised text in Lexham Bible (thanks to report by @CGIII)
 
-### v1.4.4, 11.1.2022
+* v1.4.4, 11.1.2022
 - [Change] Add reference to this project in the help text.
 
-### v1.4.3, 12.11.2021
+* v1.4.3, 12.11.2021
 - [Change] Show help text if no reference is given at the command line.
 
-### v1.4.2, 5.11.2021
+* v1.4.2, 5.11.2021
 - [Fix] Fix so that script will use user's selected Ruby installation, rather than the default one, which at least on macOS is very out-dated.
 
-### v1.4.1, 28.5.2021
+* v1.4.1, 28.5.2021
 - [Fix] Fixed Crossref markers were being truncated to a single character after the 26th Crossref.
 
-### v1.4.0, 1.2.2021
-- [Change/New] Add `--boldwords` option to turn on Markdown bold for the words of Jesus. This is now off by default.
-- [New] Add `--newline` option to start chapters and verses on a new line that starts with an H5 or H6 heading
+* v1.4.0, 1.2.2021
+- [Change/New] Add =--boldwords= option to turn on Markdown bold for the words of Jesus. This is now off by default.
+- [New] Add =--newline= option to start chapters and verses on a new line that starts with an H5 or H6 heading
 
-### v1.3.0, 29.12.2020
-- [New] Add ability to parse and show cross-references (or suppress with `-r` option), as seen in NIV and ESV versions, for example.
+* v1.3.0, 29.12.2020
+- [New] Add ability to parse and show cross-references (or suppress with =-r= option), as seen in NIV and ESV versions, for example.
 - [New] Handle the unusual (unique?) multi-verse numbering in the MSG version.
 
-### v1.2.1, 2.12.2020
+* v1.2.1, 2.12.2020
 - [Improve] The reference term is concatenated to remove spaces, meaning it doesn't need to be 'quoted'. It does not yet support multiple passages.
 
-### v1.2.0, 20.7.2020
+* v1.2.0, 20.7.2020
 - [Fix] major underlying changes to cope with significant changes at BibleGateway.com

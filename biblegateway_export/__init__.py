@@ -1,3 +1,3 @@
-"""Export BibleGateway passages as Org or Markdown."""
+"""Export BibleGateway passages as Org, Markdown, or plain text."""
 
-__version__ = "2.0.0"
+__version__ = "2.1.0"
