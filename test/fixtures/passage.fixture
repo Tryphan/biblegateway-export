@@ -1,0 +1,7 @@
+<h1 class="passage-display"><span class="passage-display-bcv">Sample 1:1-12</span><span class="passage-display-version">TEST</span></h1>
+<h3>Sample heading</h3><p><span class="chapternum">1</span><span class="woj">Sample words</span> <i>supplied words</i> &amp; text &lt;literal&gt;.<sup data-fn='a'>[<a href="#a">a</a>]</sup><sup class='crossreference'>See cross-reference A</sup><br />Next line.</p>
+<p><span class="text"><sup class="versenum">10-12</sup> More sample text.</span></p>
+<li><a title="note">Sample 1:1</a> <span class='footnote-text'>A <b>sample</b> note.</span></li>
+<li><a class="crossref-link" href="/x">Sample 2:1</a></li>
+<div class="publisher-info"><p>Sample copyright &amp; notice.</p></div>
+<section class="other-resources">

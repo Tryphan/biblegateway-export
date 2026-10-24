@@ -1,0 +1,3 @@
+* text=auto
+*.rb text eol=lf
+bg-export text eol=lf
