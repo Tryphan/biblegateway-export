@@ -5,7 +5,7 @@ Export BibleGateway passages to *Emacs Org mode*, *Markdown*, or *plain text* fr
 line or directly into an Org buffer. Includes titles, editorial headings, chapter
 and verse numbers, footnotes, cross-references, and copyright notices.
 
-Version *2.1.0* is implemented in Python. The command remains =bg-export=, and
+Version *2.2.0* is implemented in Python. The command remains =bg-export=, and
 existing CLI options retain their meanings. No Ruby runtime or gems are needed.
 
 Based on Jonathan Clark's
@@ -43,7 +43,7 @@ Alternatively, clone the downloadable repository bundle:
 
 #+begin_src sh
 mkdir -p ~/devel
-git clone ~/Downloads/biblegateway-export-v2.1.0.bundle ~/devel/biblegateway-export
+git clone ~/Downloads/biblegateway-export-v2.2.0.bundle ~/devel/biblegateway-export
 cd ~/devel/biblegateway-export
 #+end_src
 
@@ -79,25 +79,27 @@ For this setup, point the Emacs interpreter setting below to
 the =bg-export= console command. Run =python -m biblegateway_export= as an
 alternative entry point from a checkout or installed environment.
 
-* Upgrade from v2.0.0
+* Upgrade from v2.1.0
 Download the new bundle and update a clean checkout:
 
 #+begin_src sh
 cd ~/devel/biblegateway-export
-git fetch ~/Downloads/biblegateway-export-v2.1.0.bundle main --tags
+git fetch ~/Downloads/biblegateway-export-v2.2.0.bundle main --tags
 git merge --ff-only FETCH_HEAD
 #+end_src
 
 This preserves your existing =origin=, including your Forgejo remote. No new
-runtime dependency or Emacs configuration change is needed for this update.
+runtime dependency or required Emacs configuration change is needed. Restart
+Emacs after upgrading, or reload =emacs/biblegateway-export.el= using
+=M-x load-file= to activate the new prompts.
 If you have local commits or edits that prevent a fast-forward, the provided
-v2.1.0 patch is based on v2.0.0:
+v2.2.0 patch is based on v2.1.0:
 
 #+begin_src sh
-git apply --check ~/Downloads/biblegateway-export-v2.1.0.patch
-git apply ~/Downloads/biblegateway-export-v2.1.0.patch
+git apply --check ~/Downloads/biblegateway-export-v2.2.0.patch
+git apply ~/Downloads/biblegateway-export-v2.2.0.patch
 git add .
-git commit -m "Add plain text exports and Org documentation"
+git commit -m "Select passage, version, and format in Emacs"
 #+end_src
 
 When upgrading from the earlier Ruby v1.7.0 release, also install the Python
@@ -169,8 +171,9 @@ breaks. Cross-references use uppercase footnote labels. All three output formats
 rendered from the same parsed content; no Markdown-to-Org conversion is used.
 
 * Emacs integration
-The Emacs insertion command continues to insert Org output into Org buffers.
-Use the CLI for plain-text or Markdown files.
+The Emacs command prompts for a passage, Bible version, and format, then
+inserts the result asynchronously into any writable buffer. It does not change
+the destination buffer's major mode.
 
 Add this to your init file or an Emacs Lisp source block in =bsw-emacs.org=:
 
@@ -182,31 +185,61 @@ Add this to your init file or an Emacs Lisp source block in =bsw-emacs.org=:
 (setq biblegateway-export-script
       (expand-file-name "~/devel/biblegateway-export/bg-export")
       biblegateway-export-python-program "/usr/bin/python"
-      biblegateway-export-translation "NET")
+      biblegateway-export-translation "NET"
+      biblegateway-export-default-format "auto")
 
 ;; Optional: choose another key if C-c b is already assigned.
 (define-key org-mode-map (kbd "C-c b") #'biblegateway-export-insert)
 #+end_src
 
-This is also provided in =emacs/config-example.el=. Restart Emacs after upgrading
-from the Ruby version. In an Org buffer, put point where the passage should go,
-then run =M-x biblegateway-export-insert= or =C-c b=. Enter a passage such as
-=John 3:16-18=, then accept NET or enter another translation abbreviation.
+This is also provided in =emacs/config-example.el=. After upgrading, restart
+Emacs or reload =emacs/biblegateway-export.el= with =M-x load-file=.
+Put point where the passage should go and run =M-x biblegateway-export-insert=
+(or =C-c b= in Org buffers with the optional binding above). Answer:
 
-The request runs asynchronously while you edit. The insertion marker follows
-edits. The passage becomes a child of the heading containing point when you
-started; before the first heading, it is a level-one heading. To always insert
-top-level passages, set:
+1. =Bible passage:= for example, =John 3:16-18=.
+2. =Bible version:= accept =NET=, select a suggested version using completion,
+   or type any BibleGateway abbreviation. Suggestions are not an exhaustive list.
+3. =Output format:= choose =org=, =md=, or =txt= using completion.
+
+Press Enter to accept a displayed default. Minibuffer history is available for
+all three prompts. The format defaults to =org= in Org buffers, =md= in Markdown
+buffers, and =txt= elsewhere. To always offer a particular default:
+
+#+begin_src emacs-lisp
+(setq biblegateway-export-default-format "txt") ; or "org", "md", "auto"
+#+end_src
+
+The request runs in the background while you edit, and its insertion marker
+follows edits. Insertion is a single undo group; selected text is not replaced.
+
+For Org output, the passage becomes a child of the heading containing point when
+you started the lookup. Before the first heading, or outside an Org buffer, it
+starts at level one. Org footnote labels are made unique for each lookup. To
+always insert top-level Org passages, set:
 
 #+begin_src emacs-lisp
 (setq biblegateway-export-heading-level 1)
 #+end_src
 
-Each lookup gets unique footnote labels. Insertion is a single undo group and
-does not replace selected text. Failures leave your note unchanged and show an
-error buffer. If the note closes or becomes read-only during the fetch, the
-result is kept in a separate buffer. Emacs invokes Python directly, disables
-clipboard copying, and does not need the =~/scripts= symlink or a PATH change.
+Markdown and TXT are inserted as produced by the exporter, without Org heading
+adjustment or footnote rewriting. If you insert multiple Markdown passages into
+one document, their footnote labels are not automatically made unique.
+Failures leave the destination unchanged and show an error buffer. If the note
+closes or becomes read-only while fetching, the result is preserved in a separate
+buffer with an appropriate mode. The command calls Python directly and disables
+clipboard copying; it needs neither the =~/scripts= link nor a PATH change.
+
+From Lisp, the optional third argument selects the format explicitly:
+
+#+begin_src emacs-lisp
+(biblegateway-export-insert "John 3:16" "NIV" "org")
+(biblegateway-export-insert "John 3:16" "NET" "md")
+(biblegateway-export-insert "John 3:16" "ESV" "txt")
+#+end_src
+
+The two-argument form remains supported and uses the configured buffer default.
+Both =md= and =markdown= are accepted as the third argument.
 
 * Clipboard
 The Python implementation uses existing OS utilities instead of a clipboard

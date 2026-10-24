@@ -19,6 +19,7 @@
           (biblegateway-export-script script)
           (biblegateway-export-python-program "sh")
           (biblegateway-export-heading-level nil)
+          (biblegateway-export-default-format "auto")
           (original-buffers (buffer-list)))
      (unwind-protect
          (progn ,@forms)
@@ -93,9 +94,83 @@
                                 (with-current-buffer (process-buffer process)
                                   (buffer-string))))))))
 
-(ert-deftest biblegateway-export-rejects-non-org-buffer ()
+(ert-deftest biblegateway-export-defaults-follow-buffer-mode ()
   (with-temp-buffer
-    (should-error (biblegateway-export-insert "John 3:16" "NET")
+    (let ((biblegateway-export-default-format "auto"))
+      (should (equal (biblegateway-export--default-format) "txt"))
+      (org-mode)
+      (should (equal (biblegateway-export--default-format) "org"))
+      (setq major-mode 'markdown-mode)
+      (should (equal (biblegateway-export--default-format) "md")))
+    (let ((biblegateway-export-default-format "txt"))
+      (org-mode)
+      (should (equal (biblegateway-export--default-format) "txt")))))
+
+(ert-deftest biblegateway-export-interactive-three-prompts ()
+  (biblegateway-export-test--with-script "printf '%s\\n' 'Plain passage'\n"
+    (with-temp-buffer
+      (text-mode)
+      (let ((real-make-process (symbol-function 'make-process))
+            captured prompts)
+        (cl-letf (((symbol-function 'read-string)
+                   (lambda (prompt &rest _)
+                     (push prompt prompts)
+                     "John 3:16"))
+                  ((symbol-function 'completing-read)
+                   (lambda (prompt _collection _predicate require-match &rest _)
+                     (push prompt prompts)
+                     (if (string-prefix-p "Bible version" prompt)
+                         (progn (should-not require-match) "SFB15")
+                       (should require-match)
+                       "txt")))
+                  ((symbol-function 'make-process)
+                   (lambda (&rest args)
+                     (setq captured (plist-get args :command))
+                     (apply real-make-process args))))
+          (biblegateway-export-test--wait
+           (call-interactively #'biblegateway-export-insert)))
+        (should (= (length prompts) 3))
+        (should (equal (cddr captured)
+                       '("--no-clipboard" "--format" "txt"
+                         "--version" "SFB15" "--" "John 3:16")))
+        (should (equal (buffer-string) "Plain passage\n"))
+        (should (eq major-mode 'text-mode))))))
+
+(ert-deftest biblegateway-export-markdown-in-org-is-not-rewritten ()
+  (biblegateway-export-test--with-script
+      "printf '%s\\n' '# Sample' '* Literal line' '[^a] [fn:a]' '[^a]: Note'\n"
+    (with-temp-buffer
+      (org-mode)
+      (insert "* Study\n")
+      (biblegateway-export-test--wait
+       (biblegateway-export-insert "John 3:16" "NET" "md"))
+      (should (equal (buffer-string)
+                     "* Study\n# Sample\n* Literal line\n[^a] [fn:a]\n[^a]: Note\n"))
+      (should (eq major-mode 'org-mode)))))
+
+(ert-deftest biblegateway-export-txt-in-fundamental-mode ()
+  (biblegateway-export-test--with-script
+      "printf '%s\\n' 'Sample (NET)' 'Text [a]' '[a] Note'\n"
+    (with-temp-buffer
+      (biblegateway-export-test--wait
+       (biblegateway-export-insert "John 3:16" "NET" "txt"))
+      (should (equal (buffer-string) "Sample (NET)\nText [a]\n[a] Note\n"))
+      (should (eq major-mode 'fundamental-mode)))))
+
+(ert-deftest biblegateway-export-org-in-text-buffer-starts-at-level-one ()
+  (biblegateway-export-test--with-script
+      "printf '%s\\n' '* Sample' 'Text [fn:a]' '[fn:a] Note'\n"
+    (with-temp-buffer
+      (text-mode)
+      (biblegateway-export-test--wait
+       (biblegateway-export-insert "John 3:16" "NET" "org"))
+      (should (string-prefix-p "* Sample\n" (buffer-string)))
+      (should (string-match-p "\\[fn:bg-[[:xdigit:]]+-a\\]" (buffer-string)))
+      (should (eq major-mode 'text-mode)))))
+
+(ert-deftest biblegateway-export-invalid-format ()
+  (with-temp-buffer
+    (should-error (biblegateway-export-insert "John 3:16" "NET" "invalid")
                   :type 'user-error)))
 
 (ert-deftest biblegateway-export-fixed-top-level ()
@@ -136,7 +211,7 @@
    (directory-file-name (file-name-directory (or load-file-name buffer-file-name)))))
 
 (ert-deftest biblegateway-export-real-python-exporter ()
-  "Exercise Emacs -> Python CLI -> HTML parser -> Org insertion offline."
+  "Exercise the real Python CLI and insertion for all three formats offline."
   (let* ((fixture (expand-file-name "tests/fixtures/passage.fixture"
                                     biblegateway-export-test--root))
          (script (make-temp-file
@@ -149,12 +224,36 @@
          (biblegateway-export-script script)
          (biblegateway-export-python-program (or (getenv "BG_TEST_PYTHON") "python3")))
     (unwind-protect
-        (with-temp-buffer
-          (org-mode)
-          (insert "* Study\n")
-          (biblegateway-export-test--wait
-           (biblegateway-export-insert "Sample 1" "NET"))
-          (should (string-match-p "^\\*\\* Sample 1:1-12 (TEST)" (buffer-string)))
-          (should (string-match-p "\\[fn:bg-[[:xdigit:]]+-a\\]" (buffer-string)))
-          (should (string-match-p "/supplied words/" (buffer-string))))
+        (dolist (output-format '("org" "md" "txt"))
+          (with-temp-buffer
+            (if (equal output-format "org") (org-mode) (text-mode))
+            (when (equal output-format "org") (insert "* Study\n"))
+            (biblegateway-export-test--wait
+             (biblegateway-export-insert "Sample 1" "NET" output-format))
+            (pcase output-format
+              ("org"
+               (should (string-match-p "^\\*\\* Sample 1:1-12 (TEST)" (buffer-string)))
+               (should (string-match-p "\\[fn:bg-[[:xdigit:]]+-a\\]" (buffer-string)))
+               (should (string-match-p "/supplied words/" (buffer-string))))
+              ("md"
+               (should (string-prefix-p "# Sample 1:1-12 (TEST)" (buffer-string)))
+               (should (string-match-p "\\[\\^a\\]" (buffer-string)))
+               (should (string-match-p "_supplied words_" (buffer-string))))
+              ("txt"
+               (should (string-prefix-p "Sample 1:1-12 (TEST)" (buffer-string)))
+               (should (string-match-p "\\[a\\]" (buffer-string)))
+               (should-not (string-match-p "_supplied words_" (buffer-string)))))))
       (delete-file script))))
+
+(ert-deftest biblegateway-export-markdown-result-preserved-as-text ()
+  (biblegateway-export-test--with-script
+      "sleep 0.1\nprintf '%s\\n' '# Sample' 'Text [^a]' '[^a]: Note'\n"
+    (with-temp-buffer
+      (text-mode)
+      (let ((process (biblegateway-export-insert "John 3:16" "NET" "md")))
+        (setq buffer-read-only t)
+        (biblegateway-export-test--wait process)
+        (with-current-buffer (process-buffer process)
+          (should (derived-mode-p 'text-mode))
+          (should-not (derived-mode-p 'org-mode))
+          (should (string-prefix-p "# Sample\n" (buffer-string))))))))

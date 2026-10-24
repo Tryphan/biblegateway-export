@@ -1,11 +1,11 @@
-;;; biblegateway-export.el --- Insert Bible passages as Org -*- lexical-binding: t; -*-
+;;; biblegateway-export.el --- Insert Bible passages in a selected format -*- lexical-binding: t; -*-
 
 ;; Package-Requires: ((emacs "27.1"))
-;; Version: 2.1.0
+;; Version: 2.2.0
 ;; Keywords: text, tools
 
 ;;; Commentary:
-;; Load this file and run M-x biblegateway-export-insert in an Org buffer.
+;; Load this file and run M-x biblegateway-export-insert in a writable buffer.
 ;; Requires Python and the complete biblegateway-export project.
 
 ;;; Code:
@@ -14,7 +14,7 @@
 (require 'subr-x)
 
 (defgroup biblegateway-export nil
-  "Fetch BibleGateway passages as Org."
+  "Fetch BibleGateway passages as Org, Markdown, or plain text."
   :group 'org)
 
 (defcustom biblegateway-export-script
@@ -30,6 +30,60 @@ Keep the biblegateway_export package directory beside the script."
 (defcustom biblegateway-export-translation "NET"
   "Default BibleGateway translation abbreviation."
   :type 'string)
+
+(defcustom biblegateway-export-default-format "auto"
+  "Default format offered by `biblegateway-export-insert'.
+With auto, offer Org in Org buffers, Markdown in Markdown buffers, and TXT
+elsewhere.  The interactive command always lets you choose another format."
+  :type '(choice (const :tag "Choose from buffer mode" "auto")
+                 (const :tag "Org" "org")
+                 (const :tag "Markdown" "md")
+                 (const :tag "Plain text" "txt")))
+
+(defvar biblegateway-export-reference-history nil
+  "Previously requested Bible passages.")
+(defvar biblegateway-export-translation-history nil
+  "Previously requested Bible versions.")
+(defvar biblegateway-export-format-history nil
+  "Previously selected output formats.")
+
+(defun biblegateway-export--default-format ()
+  "Return the default format name for the current buffer."
+  (if (equal biblegateway-export-default-format "auto")
+      (cond ((derived-mode-p 'org-mode) "org")
+            ((derived-mode-p 'markdown-mode) "md")
+            (t "txt"))
+    (if (equal biblegateway-export-default-format "markdown")
+        "md"
+      biblegateway-export-default-format)))
+
+(defun biblegateway-export--normalize-format (output-format)
+  "Validate OUTPUT-FORMAT and return its canonical CLI name."
+  (pcase output-format
+    ((or "md" "markdown") "markdown")
+    ((or "org" "txt") output-format)
+    (_ (user-error "Choose org, md (markdown), or txt"))))
+
+(defun biblegateway-export--read-arguments ()
+  "Prompt for a reference, translation, and output format."
+  (list (read-string "Bible passage: " nil
+                     'biblegateway-export-reference-history)
+        (completing-read
+         "Bible version: "
+         '("NET" "NIV" "NIVUK" "ESV" "NLT" "KJV" "NKJV" "NASB"
+           "NRSVUE" "CSB" "LEB" "MSG" "WEB")
+         nil nil nil 'biblegateway-export-translation-history
+         biblegateway-export-translation)
+        (completing-read "Output format: " '("org" "md" "txt")
+                         nil t nil 'biblegateway-export-format-history
+                         (biblegateway-export--default-format))))
+
+(defun biblegateway-export--result-mode (output-format)
+  "Select a mode for a preserved result in OUTPUT-FORMAT."
+  (cond ((equal output-format "org") (org-mode))
+        ((and (equal output-format "markdown") (fboundp 'markdown-mode))
+         (markdown-mode))
+        (t (text-mode))))
 
 (defcustom biblegateway-export-heading-level nil
   "Level for the passage heading, or nil for a child of the current heading.
@@ -52,9 +106,9 @@ With nil, use level 1 before the first heading; otherwise use a child level."
       (replace-match (concat "[fn:" namespace "-" (match-string 1) "]") t t))
     (buffer-string)))
 
-(defun biblegateway-export--finish (process output errors marker level namespace)
+(defun biblegateway-export--finish (process output errors marker level namespace output-format)
   "Handle completed PROCESS with OUTPUT and ERRORS at MARKER.
-LEVEL and NAMESPACE control insertion formatting."
+LEVEL and NAMESPACE control Org insertion; OUTPUT-FORMAT selects syntax."
   (when (and (memq (process-status process) '(exit signal))
              (not (process-get process 'biblegateway-export-finished)))
     (process-put process 'biblegateway-export-finished t)
@@ -73,14 +127,17 @@ LEVEL and NAMESPACE control insertion formatting."
                         (goto-char marker)
                         (atomic-change-group
                           (unless (bolp) (insert "\n"))
-                          (insert (biblegateway-export--prepare text level namespace))
+                          (insert (if (equal output-format "org")
+                                      (biblegateway-export--prepare text level namespace)
+                                    text))
                           (unless (bolp) (insert "\n")))))
                     (kill-buffer output)
                     (message "BibleGateway passage inserted"))
                 (error
                  ;; Preserve fetched text if the destination became read-only,
                  ;; was closed, or another insertion error occurred.
-                 (with-current-buffer output (org-mode))
+                 (with-current-buffer output
+                   (biblegateway-export--result-mode output-format))
                  (display-buffer output)
                  (message "Could not insert passage: %s; result is in %s"
                           (error-message-string err) (buffer-name output))))
@@ -98,25 +155,30 @@ LEVEL and NAMESPACE control insertion formatting."
         (when (buffer-live-p errors) (kill-buffer errors))))))
 
 ;;;###autoload
-(defun biblegateway-export-insert (reference translation)
-  "Fetch REFERENCE in TRANSLATION asynchronously and insert Org at point.
-Prompt for a passage and BibleGateway translation abbreviation.  Insert under
-this heading by default.  The insertion marker follows edits while fetching.
-Do not replace selected text.  Clipboard copying is disabled."
-  (interactive
-   (list (read-string "Bible passage: ")
-         (read-string "Translation: " nil nil biblegateway-export-translation)))
-  (unless (derived-mode-p 'org-mode)
-    (user-error "Run this command in an Org buffer"))
+(defun biblegateway-export-insert (reference translation &optional output-format)
+  "Fetch REFERENCE in TRANSLATION and insert OUTPUT-FORMAT asynchronously.
+Prompt for all three values when called interactively.  OUTPUT-FORMAT can be
+org, md (or markdown), or txt.  If omitted, use the configured buffer default.
+Only Org output receives heading adjustment and unique footnote labels.
+The marker follows edits while fetching.  Do not replace selected text or
+change the destination buffer's mode.  Clipboard copying is disabled."
+  (interactive (biblegateway-export--read-arguments))
   (barf-if-buffer-read-only)
   (when (or (string-empty-p (string-trim reference))
             (string-empty-p (string-trim translation)))
     (user-error "Passage and translation must not be empty"))
+  (setq output-format
+        (biblegateway-export--normalize-format
+         (or output-format (biblegateway-export--default-format))))
   (unless (file-readable-p biblegateway-export-script)
     (user-error "Cannot read bg-export: set biblegateway-export-script"))
   (let ((python (executable-find biblegateway-export-python-program))
-        (level (or biblegateway-export-heading-level
-                   (1+ (or (org-current-level) 0)))))
+        (level (if (equal output-format "org")
+                   (or biblegateway-export-heading-level
+                       (if (derived-mode-p 'org-mode)
+                           (1+ (or (org-current-level) 0))
+                         1))
+                 1)))
     (unless python
       (user-error "Cannot find Python: set biblegateway-export-python-program"))
     (unless (and (integerp level) (> level 0))
@@ -137,12 +199,12 @@ Do not replace selected text.  Clipboard copying is disabled."
                ;; Argument list, never a shell command: punctuation in the
                ;; passage cannot be interpreted by a shell.
                :command (list python (expand-file-name biblegateway-export-script)
-                              "--no-clipboard" "--format" "org"
+                              "--no-clipboard" "--format" output-format
                               "--version" translation "--" reference)
                :sentinel (lambda (process _event)
                            (biblegateway-export--finish
-                            process output errors marker level namespace)))
-            (message "Fetching %s (%s)..." reference translation))
+                            process output errors marker level namespace output-format)))
+            (message "Fetching %s (%s, %s)..." reference translation output-format))
         (error
          (set-marker marker nil)
          (kill-buffer output)

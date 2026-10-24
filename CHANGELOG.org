@@ -1,6 +1,14 @@
 #+title: BibleGateway Export — Changelog
 #+startup: overview
 
+* v2.2.0, 24.10.2026
+- Prompt in Emacs for passage reference, Bible version, and output format.
+- Offer version completion with free-form abbreviations and minibuffer histories.
+- Default to Org, Markdown, or TXT according to the destination buffer mode.
+- Allow all three output formats in any writable buffer without changing its mode.
+- Keep heading adjustment and unique footnote labels for Org output only.
+- Add configurable default format, updated examples, and multi-format Emacs tests.
+
 * v2.1.0, 24.10.2026
 - Convert README, changelog, and historical documentation to Org mode.
 - Add =--format txt= with plain headings, simple note labels, and no emphasis markup.

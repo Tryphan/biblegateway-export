@@ -7,7 +7,8 @@
 (setq biblegateway-export-script
       (expand-file-name "~/devel/biblegateway-export/bg-export")
       biblegateway-export-python-program "/usr/bin/python"
-      biblegateway-export-translation "NET")
+      biblegateway-export-translation "NET"
+      biblegateway-export-default-format "auto")
 
 ;; Optional Org buffer key binding.  Choose a different key if already in use.
 (define-key org-mode-map (kbd "C-c b") #'biblegateway-export-insert)
