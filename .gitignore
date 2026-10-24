@@ -1,6 +1,9 @@
-*.gem
-/.bundle/
-/vendor/bundle/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+build/
+dist/
 /coverage/
 /tmp/
 .DS_Store

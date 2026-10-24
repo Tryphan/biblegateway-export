@@ -17,7 +17,7 @@
   (declare (indent 1))
   `(let* ((script (make-temp-file "bg-export-test-" nil ".sh" ,body))
           (biblegateway-export-script script)
-          (biblegateway-export-ruby-program "sh")
+          (biblegateway-export-python-program "sh")
           (biblegateway-export-heading-level nil)
           (original-buffers (buffer-list)))
      (unwind-protect
@@ -130,3 +130,31 @@
       (biblegateway-export-test--wait
        (biblegateway-export-insert "John 3:16" "NET"))
       (should (equal (buffer-string) "Existing text\n")))))
+
+(defconst biblegateway-export-test--root
+  (file-name-directory
+   (directory-file-name (file-name-directory (or load-file-name buffer-file-name)))))
+
+(ert-deftest biblegateway-export-real-python-exporter ()
+  "Exercise Emacs -> Python CLI -> HTML parser -> Org insertion offline."
+  (let* ((fixture (expand-file-name "tests/fixtures/passage.fixture"
+                                    biblegateway-export-test--root))
+         (script (make-temp-file
+                  "bg-real-export-" nil ".py"
+                  (format
+                   (concat "import sys\nsys.path.insert(0, %S)\n"
+                           "from biblegateway_export.cli import main\n"
+                           "raise SystemExit(main(['--test', %S] + sys.argv[1:]))\n")
+                   biblegateway-export-test--root fixture)))
+         (biblegateway-export-script script)
+         (biblegateway-export-python-program (or (getenv "BG_TEST_PYTHON") "python3")))
+    (unwind-protect
+        (with-temp-buffer
+          (org-mode)
+          (insert "* Study\n")
+          (biblegateway-export-test--wait
+           (biblegateway-export-insert "Sample 1" "NET"))
+          (should (string-match-p "^\\*\\* Sample 1:1-12 (TEST)" (buffer-string)))
+          (should (string-match-p "\\[fn:bg-[[:xdigit:]]+-a\\]" (buffer-string)))
+          (should (string-match-p "/supplied words/" (buffer-string))))
+      (delete-file script))))

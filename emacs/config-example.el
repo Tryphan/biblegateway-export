@@ -6,7 +6,7 @@
 
 (setq biblegateway-export-script
       (expand-file-name "~/devel/biblegateway-export/bg-export")
-      biblegateway-export-ruby-program "/usr/bin/ruby"
+      biblegateway-export-python-program "/usr/bin/python"
       biblegateway-export-translation "NET")
 
 ;; Optional Org buffer key binding.  Choose a different key if already in use.

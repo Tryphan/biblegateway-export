@@ -1,12 +1,12 @@
 ;;; biblegateway-export.el --- Insert Bible passages as Org -*- lexical-binding: t; -*-
 
 ;; Package-Requires: ((emacs "27.1"))
-;; Version: 1.7.0
+;; Version: 2.0.0
 ;; Keywords: text, tools
 
 ;;; Commentary:
 ;; Load this file and run M-x biblegateway-export-insert in an Org buffer.
-;; Requires Ruby and the complete biblegateway-export project.
+;; Requires Python and the complete biblegateway-export project.
 
 ;;; Code:
 
@@ -19,11 +19,12 @@
 
 (defcustom biblegateway-export-script
   (expand-file-name "~/devel/biblegateway-export/bg-export")
-  "Path to bg-export.  Keep the project's lib directory beside the script."
+  "Path to bg-export.
+Keep the biblegateway_export package directory beside the script."
   :type 'file)
 
-(defcustom biblegateway-export-ruby-program "ruby"
-  "Ruby executable, either an absolute filename or a name in `exec-path'."
+(defcustom biblegateway-export-python-program "python3"
+  "Python executable, either an absolute filename or a name in `exec-path'."
   :type 'string)
 
 (defcustom biblegateway-export-translation "NET"
@@ -113,11 +114,11 @@ Do not replace selected text.  Clipboard copying is disabled."
     (user-error "Passage and translation must not be empty"))
   (unless (file-readable-p biblegateway-export-script)
     (user-error "Cannot read bg-export: set biblegateway-export-script"))
-  (let ((ruby (executable-find biblegateway-export-ruby-program))
+  (let ((python (executable-find biblegateway-export-python-program))
         (level (or biblegateway-export-heading-level
                    (1+ (or (org-current-level) 0)))))
-    (unless ruby
-      (user-error "Cannot find Ruby: set biblegateway-export-ruby-program"))
+    (unless python
+      (user-error "Cannot find Python: set biblegateway-export-python-program"))
     (unless (and (integerp level) (> level 0))
       (user-error "Heading level must be a positive integer"))
     (let ((marker (copy-marker (point)))
@@ -135,7 +136,7 @@ Do not replace selected text.  Clipboard copying is disabled."
                :connection-type 'pipe :coding 'utf-8-unix
                ;; Argument list, never a shell command: punctuation in the
                ;; passage cannot be interpreted by a shell.
-               :command (list ruby (expand-file-name biblegateway-export-script)
+               :command (list python (expand-file-name biblegateway-export-script)
                               "--no-clipboard" "--format" "org"
                               "--version" translation "--" reference)
                :sentinel (lambda (process _event)

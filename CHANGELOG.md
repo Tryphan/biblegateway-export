@@ -2,6 +2,15 @@
 
 ## CHANGELOG
 
+### v2.0.0, 24.10.2026
+- Replace the Ruby implementation with Python 3.10+; no Ruby runtime is needed.
+- Parse HTML using Beautiful Soup and render Org/Markdown from a shared model.
+- Preserve CLI flags and launcher name; retain native Unicode punctuation.
+- Update Emacs to call Python using `biblegateway-export-python-program`.
+- Use OS clipboard tools, including wl-copy on Wayland, without a clipboard gem.
+- Add installable package metadata and offline Python and end-to-end Emacs tests.
+- Retain original Ruby versions in Git history and upstream attribution in docs.
+
 ### v1.7.0, 24.10.2026
 - Add asynchronous Emacs command `biblegateway-export-insert` for Org buffers.
 - Adapt heading levels to the destination subtree and namespace footnotes.
