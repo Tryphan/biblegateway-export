@@ -1,6 +1,13 @@
 #+title: BibleGateway Export — Changelog
 #+startup: overview
 
+* v2.3.0, 24.10.2026
+- Default Emacs exports to =-c -e -f -r= in all selected formats.
+- Omit copyright notices, editorial headings, footnotes, and cross-references.
+- Add =biblegateway-export-extra-arguments= to customize or clear these flags.
+- Keep standalone CLI defaults and Emacs passage/version/format prompts.
+- Test default exclusions and restored supplementary material with the Python CLI.
+
 * v2.2.0, 24.10.2026
 - Prompt in Emacs for passage reference, Bible version, and output format.
 - Offer version completion with free-form abbreviations and minibuffer histories.

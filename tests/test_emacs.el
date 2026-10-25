@@ -20,6 +20,7 @@
           (biblegateway-export-python-program "sh")
           (biblegateway-export-heading-level nil)
           (biblegateway-export-default-format "auto")
+          (biblegateway-export-extra-arguments '("-c" "-e" "-f" "-r"))
           (original-buffers (buffer-list)))
      (unwind-protect
          (progn ,@forms)
@@ -63,7 +64,7 @@
           (biblegateway-export-test--wait
            (biblegateway-export-insert reference "NIV")))
         (should (equal (cddr captured)
-                       (list "--no-clipboard" "--format" "org"
+                       (list "-c" "-e" "-f" "-r" "--no-clipboard" "--format" "org"
                              "--version" "NIV" "--" reference)))))))
 
 (ert-deftest biblegateway-export-failure-does-not-insert ()
@@ -131,7 +132,7 @@
            (call-interactively #'biblegateway-export-insert)))
         (should (= (length prompts) 3))
         (should (equal (cddr captured)
-                       '("--no-clipboard" "--format" "txt"
+                       '("-c" "-e" "-f" "-r" "--no-clipboard" "--format" "txt"
                          "--version" "SFB15" "--" "John 3:16")))
         (should (equal (buffer-string) "Plain passage\n"))
         (should (eq major-mode 'text-mode))))))
@@ -224,25 +225,38 @@
          (biblegateway-export-script script)
          (biblegateway-export-python-program (or (getenv "BG_TEST_PYTHON") "python3")))
     (unwind-protect
-        (dolist (output-format '("org" "md" "txt"))
-          (with-temp-buffer
-            (if (equal output-format "org") (org-mode) (text-mode))
-            (when (equal output-format "org") (insert "* Study\n"))
-            (biblegateway-export-test--wait
-             (biblegateway-export-insert "Sample 1" "NET" output-format))
-            (pcase output-format
-              ("org"
-               (should (string-match-p "^\\*\\* Sample 1:1-12 (TEST)" (buffer-string)))
-               (should (string-match-p "\\[fn:bg-[[:xdigit:]]+-a\\]" (buffer-string)))
-               (should (string-match-p "/supplied words/" (buffer-string))))
-              ("md"
-               (should (string-prefix-p "# Sample 1:1-12 (TEST)" (buffer-string)))
-               (should (string-match-p "\\[\\^a\\]" (buffer-string)))
-               (should (string-match-p "_supplied words_" (buffer-string))))
-              ("txt"
-               (should (string-prefix-p "Sample 1:1-12 (TEST)" (buffer-string)))
-               (should (string-match-p "\\[a\\]" (buffer-string)))
-               (should-not (string-match-p "_supplied words_" (buffer-string)))))))
+        (dolist (arguments '(("-c" "-e" "-f" "-r") nil))
+          (let ((biblegateway-export-extra-arguments arguments))
+            (dolist (output-format '("org" "md" "txt"))
+              (with-temp-buffer
+                (if (equal output-format "org") (org-mode) (text-mode))
+                (when (equal output-format "org") (insert "* Study\n"))
+                (biblegateway-export-test--wait
+                 (biblegateway-export-insert "Sample 1" "NET" output-format))
+                (should (string-match-p "Sample words" (buffer-string)))
+                (if arguments
+                    (dolist (excluded '("Sample heading" "Footnotes" "Crossrefs"
+                                        "copyright" "\\[fn:" "\\[\\^a\\]" "\\[a\\]"))
+                      (should-not (string-match-p excluded (buffer-string))))
+                  (should (string-match-p "Sample heading" (buffer-string)))
+                  (should (string-match-p "Footnotes" (buffer-string)))
+                  (should (string-match-p "copyright" (buffer-string))))
+                (pcase output-format
+                  ("org"
+                   (should (string-match-p "^\\*\\* Sample 1:1-12 (TEST)" (buffer-string)))
+                   (unless arguments
+                     (should (string-match-p "\\[fn:bg-[[:xdigit:]]+-a\\]" (buffer-string))))
+                   (should (string-match-p "/supplied words/" (buffer-string))))
+                  ("md"
+                   (should (string-prefix-p "# Sample 1:1-12 (TEST)" (buffer-string)))
+                   (unless arguments
+                     (should (string-match-p "\\[\\^a\\]" (buffer-string))))
+                   (should (string-match-p "_supplied words_" (buffer-string))))
+                  ("txt"
+                   (should (string-prefix-p "Sample 1:1-12 (TEST)" (buffer-string)))
+                   (unless arguments
+                     (should (string-match-p "\\[a\\]" (buffer-string))))
+                   (should-not (string-match-p "_supplied words_" (buffer-string)))))))))
       (delete-file script))))
 
 (ert-deftest biblegateway-export-markdown-result-preserved-as-text ()

@@ -1,7 +1,7 @@
 ;;; biblegateway-export.el --- Insert Bible passages in a selected format -*- lexical-binding: t; -*-
 
 ;; Package-Requires: ((emacs "27.1"))
-;; Version: 2.2.0
+;; Version: 2.3.0
 ;; Keywords: text, tools
 
 ;;; Commentary:
@@ -30,6 +30,13 @@ Keep the biblegateway_export package directory beside the script."
 (defcustom biblegateway-export-translation "NET"
   "Default BibleGateway translation abbreviation."
   :type 'string)
+
+(defcustom biblegateway-export-extra-arguments '("-c" "-e" "-f" "-r")
+  "Additional bg-export arguments used for Emacs lookups.
+The default excludes copyright notices, editorial headings, footnotes, and
+cross-references.  Set to nil to include these elements.  Use a list of
+individual arguments, not a shell command string."
+  :type '(repeat string))
 
 (defcustom biblegateway-export-default-format "auto"
   "Default format offered by `biblegateway-export-insert'.
@@ -198,9 +205,11 @@ change the destination buffer's mode.  Clipboard copying is disabled."
                :connection-type 'pipe :coding 'utf-8-unix
                ;; Argument list, never a shell command: punctuation in the
                ;; passage cannot be interpreted by a shell.
-               :command (list python (expand-file-name biblegateway-export-script)
-                              "--no-clipboard" "--format" output-format
-                              "--version" translation "--" reference)
+               :command (append
+                         (list python (expand-file-name biblegateway-export-script))
+                         biblegateway-export-extra-arguments
+                         (list "--no-clipboard" "--format" output-format
+                               "--version" translation "--" reference))
                :sentinel (lambda (process _event)
                            (biblegateway-export--finish
                             process output errors marker level namespace output-format)))

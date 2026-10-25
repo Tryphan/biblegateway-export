@@ -5,7 +5,7 @@ Export BibleGateway passages to *Emacs Org mode*, *Markdown*, or *plain text* fr
 line or directly into an Org buffer. Includes titles, editorial headings, chapter
 and verse numbers, footnotes, cross-references, and copyright notices.
 
-Version *2.2.0* is implemented in Python. The command remains =bg-export=, and
+Version *2.3.0* is implemented in Python. The command remains =bg-export=, and
 existing CLI options retain their meanings. No Ruby runtime or gems are needed.
 
 Based on Jonathan Clark's
@@ -43,7 +43,7 @@ Alternatively, clone the downloadable repository bundle:
 
 #+begin_src sh
 mkdir -p ~/devel
-git clone ~/Downloads/biblegateway-export-v2.2.0.bundle ~/devel/biblegateway-export
+git clone ~/Downloads/biblegateway-export-v2.3.0.bundle ~/devel/biblegateway-export
 cd ~/devel/biblegateway-export
 #+end_src
 
@@ -79,27 +79,27 @@ For this setup, point the Emacs interpreter setting below to
 the =bg-export= console command. Run =python -m biblegateway_export= as an
 alternative entry point from a checkout or installed environment.
 
-* Upgrade from v2.1.0
+* Upgrade from v2.2.0
 Download the new bundle and update a clean checkout:
 
 #+begin_src sh
 cd ~/devel/biblegateway-export
-git fetch ~/Downloads/biblegateway-export-v2.2.0.bundle main --tags
+git fetch ~/Downloads/biblegateway-export-v2.3.0.bundle main --tags
 git merge --ff-only FETCH_HEAD
 #+end_src
 
 This preserves your existing =origin=, including your Forgejo remote. No new
 runtime dependency or required Emacs configuration change is needed. Restart
 Emacs after upgrading, or reload =emacs/biblegateway-export.el= using
-=M-x load-file= to activate the new prompts.
+=M-x load-file= to activate the new defaults.
 If you have local commits or edits that prevent a fast-forward, the provided
-v2.2.0 patch is based on v2.1.0:
+v2.3.0 patch is based on v2.2.0:
 
 #+begin_src sh
-git apply --check ~/Downloads/biblegateway-export-v2.2.0.patch
-git apply ~/Downloads/biblegateway-export-v2.2.0.patch
+git apply --check ~/Downloads/biblegateway-export-v2.3.0.patch
+git apply ~/Downloads/biblegateway-export-v2.3.0.patch
 git add .
-git commit -m "Select passage, version, and format in Emacs"
+git commit -m "Set Emacs export defaults to omit supplementary material"
 #+end_src
 
 When upgrading from the earlier Ruby v1.7.0 release, also install the Python
@@ -186,7 +186,8 @@ Add this to your init file or an Emacs Lisp source block in =bsw-emacs.org=:
       (expand-file-name "~/devel/biblegateway-export/bg-export")
       biblegateway-export-python-program "/usr/bin/python"
       biblegateway-export-translation "NET"
-      biblegateway-export-default-format "auto")
+      biblegateway-export-default-format "auto"
+      biblegateway-export-extra-arguments '("-c" "-e" "-f" "-r"))
 
 ;; Optional: choose another key if C-c b is already assigned.
 (define-key org-mode-map (kbd "C-c b") #'biblegateway-export-insert)
@@ -208,6 +209,24 @@ buffers, and =txt= elsewhere. To always offer a particular default:
 
 #+begin_src emacs-lisp
 (setq biblegateway-export-default-format "txt") ; or "org", "md", "auto"
+#+end_src
+
+Emacs lookups pass =-c -e -f -r= by default: copyright notices, editorial
+headings, footnotes, and cross-references are omitted. These defaults apply to
+Org, Markdown, and TXT selections. Passage titles, verse numbers, and translation
+information are retained. The standalone CLI keeps its existing defaults.
+
+The argument list is configurable. To include all supplementary material again:
+
+#+begin_src emacs-lisp
+(setq biblegateway-export-extra-arguments nil)
+#+end_src
+
+Or, for example, omit only copyright notices and editorial headings while keeping
+footnotes and cross-references:
+
+#+begin_src emacs-lisp
+(setq biblegateway-export-extra-arguments '("-c" "-e"))
 #+end_src
 
 The request runs in the background while you edit, and its insertion marker
